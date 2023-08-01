@@ -8,28 +8,35 @@ import { Entypo } from '@expo/vector-icons';
 
 import * as MediaLibrary from 'expo-media-library';
 
+import { useIsFocused } from '@react-navigation/native';
+
 export default function CameraComponent({route,navigation}) {
-//   const {selectedFile}=route.params;
-
-//   useEffect(()=>{
-//     if(selectedFile){
-//         setImage(selectedFile.uri)
-//     }
-//   },[selectedFile])
-
-//   console.log(selectedFile)
-
-  const [hasCameraPermission, setHasCameraPermission] = useState(null);
+  const [hasCameraPermission, setHasCameraPermission] = useState({
+    hasCameraPermission: null,
+    type: Camera.Constants.Type.back,
+  });
   const [camera, setCamera] = useState(null);
   const [type, setType] = useState(Camera.Constants.Type.back);
   const [image,setImage]=useState(null);
 
+  const isFocused = useIsFocused();
+
+  // useEffect(async () => {
+  //   // const { status } = Permissions.askAsync(Permissions.CAMERA);
+    
+  //   // setHasCameraPermission(prevState => ({ ...prevState, hasCameraPermission: status === 'granted'}));
+  // }, []);
+
   useEffect(() => {
     (async () => {
-    const cameraStatus = await Camera.requestCameraPermissionsAsync();
-    setHasCameraPermission(cameraStatus.status === 'granted');
+      const cameraStatus = await Camera.requestCameraPermissionsAsync();
+      setHasCameraPermission(cameraStatus.status === 'granted');
     })();
   }, []);
+
+  const flipCamera=async()=>{
+    setType(type==Camera.Constants.Type.back ? Camera.Constants.Type.front : Camera.Constants.Type.back)
+  }
 
   const takePicture = async () => {
     if(camera){
@@ -82,15 +89,25 @@ export default function CameraComponent({route,navigation}) {
           />
         :
           <View style={styles.cameraContainer}>
-            <Camera  
-              ref={ref => setCamera(ref)}
-              type={type}
-              ratio={'16:9'} 
-              style={styles.camera}
-            />
+            {
+              isFocused ?
+                <Camera  
+                ref={ref => setCamera(ref)}
+                type={type}
+                ratio={'16:9'} 
+                style={styles.camera}
+                />
+              :
+              ""
+            }
             <View style={styles.imagePickerContainer}>
               <TouchableOpacity onPress={getFilesAndMove}>
                 <Entypo name="images" size={40} color="black" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.flipCameraContainer}>
+              <TouchableOpacity onPress={flipCamera}>
+                <MaterialCommunityIcons name="camera-flip" size={40} color="black" />
               </TouchableOpacity>
             </View>
           </View>
@@ -176,6 +193,11 @@ const styles = StyleSheet.create({
   imagePickerContainer:{
     position:"absolute",
     left:10,
+    bottom:10
+  },
+  flipCameraContainer:{
+    position:"absolute",
+    right:10,
     bottom:10
   }
 });
