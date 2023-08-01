@@ -1,143 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet ,Text, View, Button, Image, TouchableOpacity} from 'react-native';
-import { Camera } from 'expo-camera';
 
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { MaterialIcons } from '@expo/vector-icons';
-import { Entypo } from '@expo/vector-icons';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
 
-import * as MediaLibrary from 'expo-media-library';
+const Stack = createStackNavigator();
+
+import CameraComponent from './Camera';
+import Gallery from './Gallery';
+
+const AllStacks=()=>{
+  return(
+    <Stack.Navigator>
+      <Stack.Screen name='Camera' component={CameraComponent}/>
+      <Stack.Screen name='Gallery' component={Gallery}/>
+    </Stack.Navigator>
+  )
+}
 
 export default function App() {
-  const [hasCameraPermission, setHasCameraPermission] = useState(null);
-  const [camera, setCamera] = useState(null);
-  const [type, setType] = useState(Camera.Constants.Type.back);
-  const [image,setImage]=useState(null);
-
-  useEffect(() => {
-    (async () => {
-    const cameraStatus = await Camera.requestCameraPermissionsAsync();
-    setHasCameraPermission(cameraStatus.status === 'granted');
-    })();
-  }, []);
-
-  const takePicture = async () => {
-    if(camera){
-      const data = await camera.takePictureAsync(null)
-      console.log(data)
-      setImage(data.uri);
-    }
-  }
-
-  const discardImage= async()=>{
-    setImage(null);
-  }
-
-  const saveImage=async()=>{
-    const { status } = await MediaLibrary.requestPermissionsAsync();
-    if (status === "granted") {
-      await MediaLibrary.saveToLibraryAsync(image);
-      setImage(null)
-      console.log("Image successfully saved");
-    }
-  }
-
-  if (hasCameraPermission === false) {
-    return <Text>No access to camera</Text>;
-  }
-
   return (
-    <View style={styles.cameraContainer}>
-      {
-        image ? 
-          <Image
-            source={{uri:image && image}}
-            style={styles.image}
-          />
-        :
-          <Camera 
-            ref={ref => setCamera(ref)}
-            type={type}
-            ratio={'16:9'} 
-            style={styles.camera}
-          />
-      }
-      <View style={styles.settingsContainer}>
-        {
-          image ? 
-            <View style={styles.sendImageContainer}>
-              <MaterialCommunityIcons style={styles.send} name="send-circle" size={60} color="black" />
-              <TouchableOpacity style={styles.discard} onPress={discardImage}>
-                <Entypo name="cross" size={50} color="black" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.save} onPress={saveImage}>
-                <MaterialIcons name="save-alt" size={50} color="black" />
-              </TouchableOpacity>
-            </View>
-          :
-            <TouchableOpacity 
-              onPress={takePicture}
-              style={styles.button}
-              >
-            </TouchableOpacity>
-        }
-      </View>
-    </View>
+    <NavigationContainer>
+      {/* <View style={styles.container}> */}
+        <AllStacks/>
+      {/* </View> */}
+    </NavigationContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  cameraContainer: {
+  container: {
     flex: 1,
-    // backgroundColor: '#fff',
-    // alignItems: 'center',
-    // justifyContent: 'center',
     flexDirection:"row",
     position:"relative",
-  },
-  camera:{
-    flex:1,
-    width:"100%"
-  },
-  image:{
-    flex:1,
-    // width:100,
-    // height:100
-  },
-  settingsContainer:{
-    position:"absolute",
-    // backgroundColor:"blue",
-    width:"100%",
-    height:"100%",
-    flex:1,
-    alignItems:"center"
-  },
-  button:{
-    backgroundColor:"white",
-    position:"absolute",
-    bottom:0,
-    width:70,
-    aspectRatio:1/1,
-    borderRadius:50
-  },
-  sendImageContainer:{
-    position:"relative",
-    flex:1,
-    width:"100%",
-  },
-  send:{
-    position:"absolute",
-    right:10,
-    bottom:10
-  },
-  discard:{
-    position:"absolute",
-    top:10,
-    left:10
-  },
-  save:{
-    position:"absolute",
-    left:10,
-    bottom:10
   }
 });
