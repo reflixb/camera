@@ -11,6 +11,13 @@ import * as MediaLibrary from 'expo-media-library';
 import { useIsFocused } from '@react-navigation/native';
 
 export default function CameraComponent({route,navigation}) {
+  useEffect(()=>{
+    if(route.params?.selectedFile){
+      // console.log("camera",route.params.selectedFile)
+      setImage(route.params.selectedFile.uri)
+    }
+  },[route.params?.selectedFile]);
+
   const [hasCameraPermission, setHasCameraPermission] = useState({
     hasCameraPermission: null,
     type: Camera.Constants.Type.back,
@@ -20,12 +27,6 @@ export default function CameraComponent({route,navigation}) {
   const [image,setImage]=useState(null);
 
   const isFocused = useIsFocused();
-
-  // useEffect(async () => {
-  //   // const { status } = Permissions.askAsync(Permissions.CAMERA);
-    
-  //   // setHasCameraPermission(prevState => ({ ...prevState, hasCameraPermission: status === 'granted'}));
-  // }, []);
 
   useEffect(() => {
     (async () => {
@@ -59,10 +60,6 @@ export default function CameraComponent({route,navigation}) {
     }
   }
 
-  if (hasCameraPermission === false) {
-    return <Text>No access to camera</Text>;
-  }
-
   const getFilesAndMove=async()=>{
     const albumName='Camera';
     const getPhotos=await MediaLibrary.getAlbumAsync(albumName);
@@ -71,12 +68,16 @@ export default function CameraComponent({route,navigation}) {
       first:100,
       album:getPhotos,
       sortBy:["creationTime"],
-      mediaType:["photo"]
+      mediaType:["photo","video"]
     });
 
     navigation.navigate("Gallery" , {
         files:photos
     })
+  }
+
+  if (hasCameraPermission === false) {
+    return <Text>No access to camera</Text>;
   }
 
   return (
@@ -102,12 +103,12 @@ export default function CameraComponent({route,navigation}) {
             }
             <View style={styles.imagePickerContainer}>
               <TouchableOpacity onPress={getFilesAndMove}>
-                <Entypo name="images" size={40} color="black" />
+                <Entypo name="images" size={40} color="white" />
               </TouchableOpacity>
             </View>
             <View style={styles.flipCameraContainer}>
               <TouchableOpacity onPress={flipCamera}>
-                <MaterialCommunityIcons name="camera-flip" size={40} color="black" />
+                <MaterialCommunityIcons name="camera-flip" size={40} color="white" />
               </TouchableOpacity>
             </View>
           </View>
@@ -151,6 +152,7 @@ const styles = StyleSheet.create({
   },
   image:{
     flex:1,
+    resizeMode:"cover"
     // width:100,
     // height:100
   },

@@ -12,7 +12,7 @@ import Gallery from './Gallery';
 const AllStacks=()=>{
   return(
     <Stack.Navigator>
-      <Stack.Screen name='Camera' component={CameraComponent}/>
+      <Stack.Screen options={{headerShown:false}} name='Camera' component={CameraComponent}/>
       <Stack.Screen name='Gallery' component={Gallery}/>
     </Stack.Navigator>
   )

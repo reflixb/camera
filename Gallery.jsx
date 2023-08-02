@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect , useRef } from 'react';
 import { StyleSheet ,Text, View, Button, Image, TouchableOpacity , ScrollView} from 'react-native';
+import { Video} from 'expo-av';
 
 export default function Gallery({route,navigation}) {
     const {files}=route.params;
 
-    // console.log(files)
+    const video = useRef(null);
 
-    const selectImage=(file)=>{
-        navigation.navigate("Camera" , {
-            selectedFile:file
-        })
+    const [status, setStatus] = useState({});
+
+    const selectFile=(file)=>{
+        // navigation.navigate("Camera",{
+        //     selectedFile:file
+        // });
     }
 
     return (
@@ -17,18 +20,26 @@ export default function Gallery({route,navigation}) {
             {
                 files && files.assets.map((file,i)=>{
                     return(
-                        // <TouchableOpacity
-                        //     style={styles.image}
-                        //     onPress={selectImage(file)}
-                        //     key={i}
-                        // >
+                        file.mediaType=="video" ?
+                        <TouchableOpacity key={i} onPress={()=>selectFile(file)}>
+                            <Video
+                                ref={video}
+                                style={styles.video}
+                                source={{uri:file && file.uri}}
+                                useNativeControls
+                                resizeMode="cover"
+                                // isLooping
+                                // onPlaybackStatusUpdate={status => setStatus(() => status)}
+                            />
+                        </TouchableOpacity>
+                        :
+
+                        <TouchableOpacity key={i} onPress={()=>selectFile(file)}>
                             <Image
                                 source={{uri:file && file.uri}}
                                 style={styles.image}
-                                key={i}
-                                // onPress={selectImage(file)}
                             />
-                        // </TouchableOpacity>
+                        </TouchableOpacity>
                     )
                 })
             }
@@ -38,16 +49,18 @@ export default function Gallery({route,navigation}) {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flex:1,
     flexDirection:"row",
-    flexWrap:"wrap",
-    width:"100%",
-    backgroundColor:"red"
+    flexWrap:"wrap"
   },
   image:{
-    width:90,
-    height:90,
+    width:100,
+    height:100,
     resizeMode:"cover",
-    margin:1,
+    alignSelf:"stretch"
+  },
+  video:{
+    width:100,
+    height:100
   }
 });
