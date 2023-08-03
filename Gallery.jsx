@@ -1,6 +1,7 @@
 import React, { useState, useEffect , useRef } from 'react';
 import { StyleSheet ,Text, View, Button, Image, TouchableOpacity , ScrollView , FlatList} from 'react-native';
 import { Video} from 'expo-av';
+import { AntDesign } from '@expo/vector-icons';
 
 export default function Gallery({route,navigation}) {
     const {files}=route.params;
@@ -9,19 +10,30 @@ export default function Gallery({route,navigation}) {
 
     const [status, setStatus] = useState({});
 
-    const selectFile=(file)=>{
-        // navigation.navigate("Camera",{
-        //     selectedFile:file
-        // });
-    }
+    const [selectedFiles,setSelectedFiles]=useState([{}]);
 
-    // console.log(files)
+    // selectedFiles?.map((sda,i)=>{
+    //     console.log(i+1,sda);
+    // })
+
+    const selectFile=(file)=>{
+        const index=selectedFiles.findIndex(object=>{
+            return object.uri==file.uri;
+        });
+
+        if(index==-1){
+            setSelectedFiles([...selectedFiles , file]);
+        }else{
+            const filtered=selectedFiles.filter(selectedFile=>selectedFile?.uri!=file?.uri);
+            setSelectedFiles(filtered)
+        }
+    }
 
     const RenderFile=({item})=>{
         //prop's name can only be given as "item"
         return(
             item?.mediaType=="video" ?
-                <TouchableOpacity onPress={()=>selectFile(item)}>
+                <TouchableOpacity style={styles.fileContainer} onPress={()=>selectFile(item)}>
                     <Video
                         ref={video}
                         style={styles.video}
@@ -31,14 +43,38 @@ export default function Gallery({route,navigation}) {
                         // isLooping
                         // onPlaybackStatusUpdate={status => setStatus(() => status)}
                     />
+                    {
+                        selectedFiles?.map((selectedFile,i)=>{
+                            return(
+                                selectedFile!=[] && selectedFile?.uri===item?.uri ?
+                                <View key={i} style={styles.selectedItem}>
+                                    <AntDesign name="checkcircle" size={35} color="#007FFF" />
+                                </View>
+                                :
+                                ""
+                            )
+                        })
+                    }
                 </TouchableOpacity>
             :
 
-            <TouchableOpacity onPress={()=>selectFile(item)}>
+            <TouchableOpacity style={styles.fileContainer} onPress={()=>selectFile(item)}>
                 <Image
                     source={{uri:item && item.uri}}
                     style={styles.image}
-                />  
+                />
+                {
+                    selectedFiles?.map((selectedFile,i)=>{
+                        return(
+                            selectedFile!=[] && selectedFile?.uri===item?.uri ?
+                            <View key={i} style={styles.selectedItem}>
+                                <AntDesign name="checkcircle" size={35} color="#007FFF" />
+                            </View>
+                            :
+                            ""
+                        )
+                    })
+                }
             </TouchableOpacity>
         )
     }
@@ -80,9 +116,8 @@ export default function Gallery({route,navigation}) {
             keyExtractor={file=>file.uri}
             key={file=>file.uri}
             // style={styles.container}
-            contentContainerStyle={{flexGrow: 1, justifyContent: 'center'}}
+            contentContainerStyle={{flexGrow: 1, alignItems:"center"}}
         />
-        // <Text>aa</Text>
     );
 }
 
@@ -93,15 +128,28 @@ const styles = StyleSheet.create({
     // flexWrap:"wrap"
   },
   image:{
-    width:100,
-    height:100,
+    width:"100%",
+    height:"100%",
     resizeMode:"cover",
     alignSelf:"stretch",
-    margin:5
   },
   video:{
-    width:100,
-    height:100,
-    margin:5
+    width:"100%",
+    height:"100%",
+  },
+  fileContainer:{
+    marginHorizontal:8,
+    marginVertical:5,
+    position:"relative",
+    width:110,
+    height:110
+  },
+  selectedItem:{
+    position:"absolute",
+    width:"100%",
+    height:"100%",
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    justifyContent:"center",
+    alignItems:"center"
   }
 });

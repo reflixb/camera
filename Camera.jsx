@@ -65,7 +65,7 @@ export default function CameraComponent({route,navigation}) {
     const getPhotos=await MediaLibrary.getAlbumAsync(albumName);
 
     const photos=await MediaLibrary.getAssetsAsync({
-      first:100,
+      first:10,
       album:getPhotos,
       sortBy:["creationTime"],
       mediaType:["photo","video"]
