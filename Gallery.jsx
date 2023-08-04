@@ -2,8 +2,6 @@ import React, { useState, useEffect , useRef } from 'react';
 import { StyleSheet ,Text, View, Button, Image, TouchableOpacity , ScrollView , FlatList} from 'react-native';
 import { Video} from 'expo-av';
 import { AntDesign } from '@expo/vector-icons';
-import { Cloudinary } from "@cloudinary/url-gen";
-import { AdvancedImage } from 'cloudinary-react-native';
 
 export default function Gallery({navigation,route}) {
     const {files}=route.params;
@@ -30,13 +28,11 @@ export default function Gallery({navigation,route}) {
     }, [navigation]);
 
     const Upload=()=>{
-        const cld = new Cloudinary({
-            cloud: {
-                cloudName: 'demo'
-            }
-        });
+        navigation.navigate("Camera" , {
+            selectedFiles:selectedFiles
+        })
     }
-
+    
     const selectFile=(file)=>{
         const index=selectedFiles.findIndex(object=>{
             return object.uri==file.uri;

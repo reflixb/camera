@@ -1,32 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet ,Text, View, Button, Image, TouchableOpacity} from 'react-native';
+import React, { useState, useEffect , useRef } from 'react';
+import { StyleSheet ,Text, View, Button, Image, TouchableOpacity , StatusBar} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { Camera } from 'expo-camera';
+
+import * as MediaLibrary from 'expo-media-library';
+import * as VideoThumbnails from 'expo-video-thumbnails';
+
+import { useIsFocused } from '@react-navigation/native';
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
 
-import * as MediaLibrary from 'expo-media-library';
-
-import { useIsFocused } from '@react-navigation/native';
-
 export default function CameraComponent({route,navigation}) {
   useEffect(()=>{
-    if(route.params?.selectedFile){
-      // console.log("camera",route.params.selectedFile)
-      setImage(route.params.selectedFile.uri)
+    if(route.params?.selectedFiles){
+      // console.log(route.params.selectedFiles)
     }
-  },[route.params?.selectedFile]);
+  },[route.params?.selectedFiles]);
 
   const [hasCameraPermission, setHasCameraPermission] = useState({
     hasCameraPermission: null,
     type: Camera.Constants.Type.back,
   });
+  const [mediaLibraryPermission,setMediaLibraryPermission]=useState();
   const [camera, setCamera] = useState(null);
   const [type, setType] = useState(Camera.Constants.Type.back);
-  const [image,setImage]=useState(null);
+  const [images,setImages]=useState([]);
 
   const isFocused = useIsFocused();
+
+  const [galleryFirstItemThumbnailUri,setGalleryFirstItemThumbnailUri]=useState();
 
   useEffect(() => {
     (async () => {
@@ -34,6 +38,36 @@ export default function CameraComponent({route,navigation}) {
       setHasCameraPermission(cameraStatus.status === 'granted');
     })();
   }, []);
+
+  useEffect(()=>{
+    (async ()=>{
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      setMediaLibraryPermission(status)
+      if (status === "granted") {
+        const albumName='Camera';
+        const getFiles=await MediaLibrary.getAlbumAsync(albumName);
+    
+        const firstItem=await MediaLibrary.getAssetsAsync({
+          first:1,
+          album:getFiles,
+          sortBy:["creationTime"],
+          mediaType:["photo","video"]
+        });
+        
+        if(firstItem.assets[0].mediaType=="photo"){
+          setGalleryFirstItemThumbnailUri(firstItem.assets[0].uri);
+        }else{
+          const { uri } = await VideoThumbnails.getThumbnailAsync(
+            firstItem.assets[0].uri,
+            {
+              time: 15000,
+            }
+          );
+          setGalleryFirstItemThumbnailUri(uri)
+        }
+      }
+    })();
+  },[])
 
   const flipCamera=async()=>{
     setType(type==Camera.Constants.Type.back ? Camera.Constants.Type.front : Camera.Constants.Type.back)
@@ -43,21 +77,21 @@ export default function CameraComponent({route,navigation}) {
     if(camera){
       const data = await camera.takePictureAsync(null)
       console.log(data)
-      setImage(data.uri);
+      setImages(data.uri);
     }
   }
 
   const discardImage= async()=>{
-    setImage(null);
+    setImages([]);
   }
 
   const saveImage=async()=>{
-    const { status } = await MediaLibrary.requestPermissionsAsync();
-    if (status === "granted") {
-      await MediaLibrary.saveToLibraryAsync(image);
-      setImage(null)
-      console.log("Image successfully saved");
-    }
+    // const { status } = await MediaLibrary.requestPermissionsAsync();
+    // if (status === "granted") {
+    //   await MediaLibrary.saveToLibraryAsync(image);
+    //   setImages([])
+    //   console.log("Image successfully saved");
+    // }
   }
 
   const getFilesAndMove=async()=>{
@@ -81,125 +115,112 @@ export default function CameraComponent({route,navigation}) {
   }
 
   return (
-    <View style={styles.cameraContainer}>
-      {
-        image ? 
-          <Image
-            source={{uri:image && image}}
-            style={styles.image}
-          />
-        :
-          <View style={styles.cameraContainer}>
-            {
-              isFocused ?
-                <Camera  
-                ref={ref => setCamera(ref)}
-                type={type}
-                ratio={'16:9'} 
-                style={styles.camera}
-                />
-              :
-              ""
-            }
-            <View style={styles.imagePickerContainer}>
-              <TouchableOpacity onPress={getFilesAndMove}>
-                <Entypo name="images" size={40} color="white" />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.flipCameraContainer}>
-              <TouchableOpacity onPress={flipCamera}>
-                <MaterialCommunityIcons name="camera-flip" size={40} color="white" />
-              </TouchableOpacity>
-            </View>
+      images.length!=0 ? 
+
+        <SafeAreaView style={styles.container}>
+          <Text>Images go here</Text>
+        </SafeAreaView>
+
+      :
+
+      isFocused ?
+        <View style={styles.container}>
+          <StatusBar hidden/>
+
+          <View style={styles.blackTop}>
           </View>
-      }
-      <View style={styles.settingsContainer}>
-        {
-          image ? 
-            <View style={styles.sendImageContainer}>
-              <MaterialCommunityIcons style={styles.send} name="send-circle" size={60} color="black" />
-              <TouchableOpacity style={styles.discard} onPress={discardImage}>
-                <Entypo name="cross" size={50} color="black" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.save} onPress={saveImage}>
-                <MaterialIcons name="save-alt" size={50} color="black" />
-              </TouchableOpacity>
-            </View>
-          :
-            <TouchableOpacity 
-              onPress={takePicture}
-              style={styles.button}
-              >
+
+          <View style={styles.cameraContainer}>
+            <Camera  
+              ref={ref => setCamera(ref)}
+              type={type}
+              ratio={'4:3'} 
+              style={styles.camera}
+            />
+          </View>
+
+          <View style={styles.blackBottom}>
+            <TouchableOpacity style={styles.gallery}>
+              <Image 
+                source={{uri:galleryFirstItemThumbnailUri}}
+                style={styles.thumbnail}
+              />
             </TouchableOpacity>
-        }
-      </View>
-    </View>
+            <TouchableOpacity style={styles.button}>
+              <View style={styles.innerButton}>
+
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={flipCamera} style={styles.flipCameraContainer}>
+              <Entypo name="cycle" size={30} color="white" />
+            </TouchableOpacity>
+          </View>
+
+        </View>
+      :
+      ""
   );
 }
 
 const styles = StyleSheet.create({
-  cameraContainer: {
-    flex: 1,
-    // backgroundColor: '#fff',
-    // alignItems: 'center',
-    // justifyContent: 'center',
-    flexDirection:"row",
-    position:"relative",
+  container:{
+    flex:1,
+    position:"relative"
   },
   camera:{
     flex:1,
     width:"100%"
   },
-  image:{
-    flex:1,
-    resizeMode:"cover"
-    // width:100,
-    // height:100
+  blackTop:{
+    backgroundColor:"black",
+    width:"100%",
+    height:65,
   },
-  settingsContainer:{
-    position:"absolute",
-    // backgroundColor:"blue",
+  cameraContainer:{
+    width:"100%",
+    height:525
+  },
+  blackBottom:{
+    flex:1,
+    flexDirection:"row",
+    backgroundColor:"black",
+    alignItems:"center",
+    justifyContent:"space-evenly"
+  },
+  gallery:{
+    borderRadius:50,
+    width:50,
+    height:50,
+    // backgroundColor:"white",
+    aspectRatio:1/1,
+  },
+  thumbnail:{
     width:"100%",
     height:"100%",
-    flex:1,
-    alignItems:"center"
+    borderRadius:50,
+    aspectRatio:1/1
   },
   button:{
+    width:75,
+    height:75,
+    backgroundColor:"#393e46",
+    borderRadius:50,
+    justifyContent:"center",
+    alignItems:"center"
+  },
+  innerButton:{
+    width:64,
+    height:64,
     backgroundColor:"white",
-    position:"absolute",
-    bottom:10,
-    width:70,
-    aspectRatio:1/1,
-    borderRadius:50
-  },
-  sendImageContainer:{
-    position:"relative",
-    flex:1,
-    width:"100%",
-  },
-  send:{
-    position:"absolute",
-    right:10,
-    bottom:10
-  },
-  discard:{
-    position:"absolute",
-    top:10,
-    left:10
-  },
-  save:{
-    position:"absolute",
-    left:10,
-    bottom:10
-  },
-  imagePickerContainer:{
-    position:"absolute",
-    left:10,
-    bottom:10
+    borderRadius:50,
   },
   flipCameraContainer:{
-    position:"absolute",
-    right:10,
-    bottom:10
+    borderRadius:50,
+    width:50,
+    height:50,
+    backgroundColor:"#393e46",
+    aspectRatio:1/1,
+    justifyContent:"center",
+    alignItems:"center"
   }
 });
