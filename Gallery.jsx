@@ -2,19 +2,40 @@ import React, { useState, useEffect , useRef } from 'react';
 import { StyleSheet ,Text, View, Button, Image, TouchableOpacity , ScrollView , FlatList} from 'react-native';
 import { Video} from 'expo-av';
 import { AntDesign } from '@expo/vector-icons';
+import { Cloudinary } from "@cloudinary/url-gen";
+import { AdvancedImage } from 'cloudinary-react-native';
 
-export default function Gallery({route,navigation}) {
+export default function Gallery({navigation,route}) {
     const {files}=route.params;
 
     const video = useRef(null);
 
     const [status, setStatus] = useState({});
 
-    const [selectedFiles,setSelectedFiles]=useState([{}]);
+    const [selectedFiles,setSelectedFiles]=useState([]);
 
-    // selectedFiles?.map((sda,i)=>{
-    //     console.log(i+1,sda);
-    // })
+    useEffect(() => {
+        // Use `setOptions` to update the button that we previously specified
+        // Now the button includes an `onPress` handler to update the count
+        navigation.setOptions({
+            headerRight: () => (
+                <Button 
+                    onPress={Upload} 
+                    title={
+                        "Upload"
+                    } 
+                />
+            ),
+        });
+    }, [navigation]);
+
+    const Upload=()=>{
+        const cld = new Cloudinary({
+            cloud: {
+                cloudName: 'demo'
+            }
+        });
+    }
 
     const selectFile=(file)=>{
         const index=selectedFiles.findIndex(object=>{
