@@ -1,13 +1,17 @@
 import React, { useState, useEffect , useRef } from 'react';
 import { StyleSheet ,Text, View, Button, Image, TouchableOpacity , StatusBar} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Camera } from 'expo-camera';
 
+//npm
+import { Camera } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
 import * as VideoThumbnails from 'expo-video-thumbnails';
+import { PinchGestureHandler } from 'react-native-gesture-handler';
 
+//react navigation
 import { useIsFocused } from '@react-navigation/native';
 
+//icons
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
@@ -32,6 +36,10 @@ export default function CameraComponent({route,navigation}) {
 
   const [galleryFirstItemThumbnailUri,setGalleryFirstItemThumbnailUri]=useState();
 
+  const [zoom,setZoom]=useState(0);
+  const [zoomScale , setZoomScale]=useState(1);
+
+  //get camera permission
   useEffect(() => {
     (async () => {
       const cameraStatus = await Camera.requestCameraPermissionsAsync();
@@ -39,6 +47,7 @@ export default function CameraComponent({route,navigation}) {
     })();
   }, []);
 
+  //get thumbnail of last file from gallery
   useEffect(()=>{
     (async ()=>{
       const { status } = await MediaLibrary.requestPermissionsAsync();
@@ -94,21 +103,18 @@ export default function CameraComponent({route,navigation}) {
     // }
   }
 
-  const getFilesAndMove=async()=>{
-    const albumName='Camera';
-    const getPhotos=await MediaLibrary.getAlbumAsync(albumName);
-
-    const photos=await MediaLibrary.getAssetsAsync({
-      first:10,
-      album:getPhotos,
-      sortBy:["creationTime"],
-      mediaType:["photo","video"]
-    });
-
-    navigation.navigate("Gallery" , {
-        files:photos
-    })
+  const moveToGallery=async()=>{
+    navigation.navigate("Gallery")
   }
+
+  const changeZoom = (event) => {
+    if (event.nativeEvent.scale > 1 && zoom < 1) {
+      setZoom(zoom + 0.05);
+    }
+    if (event.nativeEvent.scale < 1 && zoom > 0) {
+      setZoom(zoom - 0.05);
+    }
+  };
 
   if (hasCameraPermission === false) {
     return <Text>No access to camera</Text>;
@@ -131,16 +137,37 @@ export default function CameraComponent({route,navigation}) {
           </View>
 
           <View style={styles.cameraContainer}>
-            <Camera  
-              ref={ref => setCamera(ref)}
-              type={type}
-              ratio={'4:3'} 
-              style={styles.camera}
-            />
+            <PinchGestureHandler onGestureEvent={(event) => changeZoom(event)}>
+              <Camera  
+                ref={ref => setCamera(ref)}
+                type={type}
+                ratio={'4:3'} 
+                style={styles.camera}
+                zoom={zoom}
+              />
+            </PinchGestureHandler>
+            <View style={styles.zoomContainer}>
+              {/* <View>
+                <Entypo name="dot-single" size={24} color="white" />
+              </View> */}
+              {/* <View>
+                {
+                  zoom==0 ? 
+                  <View style={styles.zoomBubble}>
+                    <Text style={styles.zoomText}>1X</Text>
+                  </View>
+                  :
+                  <Entypo name="dot-single" size={24} color="white" />
+                }
+              </View> */}
+              <View style={styles.zoomBubble}>
+                  <Text style={styles.zoomText}>1X</Text>
+              </View>
+            </View>
           </View>
 
           <View style={styles.blackBottom}>
-            <TouchableOpacity style={styles.gallery}>
+            <TouchableOpacity onPress={moveToGallery} style={styles.gallery}>
               <Image 
                 source={{uri:galleryFirstItemThumbnailUri}}
                 style={styles.thumbnail}
@@ -148,7 +175,6 @@ export default function CameraComponent({route,navigation}) {
             </TouchableOpacity>
             <TouchableOpacity style={styles.button}>
               <View style={styles.innerButton}>
-
               </View>
             </TouchableOpacity>
             <TouchableOpacity onPress={flipCamera} style={styles.flipCameraContainer}>
@@ -178,7 +204,27 @@ const styles = StyleSheet.create({
   },
   cameraContainer:{
     width:"100%",
-    height:525
+    height:525,
+    position:"relative",
+    alignItems:"center"
+  },
+  zoomContainer:{
+    position:"absolute",
+    bottom:15,
+    // backgroundColor:"red",
+    flexDirection:"row",
+    alignItems:"center",
+  },
+  zoomBubble:{
+    borderRadius:50,
+    aspectRatio:1/1,
+    padding:8,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    marginHorizontal:10
+  },
+  zoomText:{
+    color:"white",
+    fontSize:12
   },
   blackBottom:{
     flex:1,

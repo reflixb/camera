@@ -1,10 +1,15 @@
 import React, { useState, useEffect , useRef } from 'react';
 import { StyleSheet ,Text, View, Button, Image, TouchableOpacity , ScrollView , FlatList} from 'react-native';
+
 import { Video} from 'expo-av';
+import * as MediaLibrary from 'expo-media-library';
+
 import { AntDesign } from '@expo/vector-icons';
 
 export default function Gallery({navigation,route}) {
-    const {files}=route.params;
+    const [mediaLibraryPermission,setMediaLibraryPermission]=useState(null);
+
+    const [files,setFiles]=useState(null);
 
     const video = useRef(null);
 
@@ -12,9 +17,19 @@ export default function Gallery({navigation,route}) {
 
     const [selectedFiles,setSelectedFiles]=useState([]);
 
+    const [loadItemsCount,setLoadItemsCount]=useState(21);
+
+    //ask media permission
+    useEffect(()=>{
+        (async () => {
+            const { status } = await MediaLibrary.requestPermissionsAsync();
+            if (status === "granted") {
+                setMediaLibraryPermission(status);
+            }
+        })();
+    },[])
+
     useEffect(() => {
-        // Use `setOptions` to update the button that we previously specified
-        // Now the button includes an `onPress` handler to update the count
         navigation.setOptions({
             headerRight: () => (
                 <Button 
@@ -27,10 +42,62 @@ export default function Gallery({navigation,route}) {
         });
     }, [navigation]);
 
-    const Upload=()=>{
-        navigation.navigate("Camera" , {
-            selectedFiles:selectedFiles
+    useEffect(()=>{
+        const getInitialFiles=async()=>{
+            const initialFiles=await MediaLibrary.getAssetsAsync({
+              first:loadItemsCount,
+              sortBy:["creationTime"],
+              mediaType:["photo","video"],
+            });
+    
+            setFiles(initialFiles.assets)
+        }
+
+        getInitialFiles();
+    },[loadItemsCount])
+
+    // useEffect(()=>{
+    //     const getMoreFiles=async()=>{
+    //         const newFiles=await MediaLibrary.getAssetsAsync({
+    //           first:loadItemsCount,
+    //           sortBy:["creationTime"],
+    //           mediaType:["photo","video"],
+    //         //   after:files!=null?files[files.length-1].id : ""
+    //         });
+    
+    //         setFiles(photos.assets)
+    //         setFiles([...files , newFiles.assets])
+    //     }
+
+    //     getMoreFiles();
+    // },[loadItemsCount]);
+
+    const Upload=async()=>{
+        // navigation.navigate("Camera" , {
+        //     selectedFiles:selectedFiles
+        // })
+        const photo = selectedFiles[0];
+
+        const info = await MediaLibrary.getAssetInfoAsync(photo);
+
+        // console.log(info.filename);
+
+        const data = new FormData();
+        data.append("file", { uri: info.localUri, name: info.filename });
+        data.append("upload_preset", "vgnfzq1k");
+        data.append("cloud_name", "dt2qlgnd6");
+
+        fetch("https://api.cloudinary.com/v1_1/dt2qlgnd6/upload", {
+            method: "post",
+            body: data,
         })
+        .then((res) => res.json())
+        .then((data) => {
+            console.log("data", data.secure_url);
+        })
+        .catch((err) => {
+            console.log(err);
+        });
     }
     
     const selectFile=(file)=>{
@@ -45,6 +112,8 @@ export default function Gallery({navigation,route}) {
             setSelectedFiles(filtered)
         }
     }
+
+    // console.log(files[files.length-1].id)
 
     const RenderFile=({item})=>{
         //prop's name can only be given as "item"
@@ -66,6 +135,7 @@ export default function Gallery({navigation,route}) {
                                 selectedFile!=[] && selectedFile?.uri===item?.uri ?
                                 <View key={i} style={styles.selectedItem}>
                                     <AntDesign name="checkcircle" size={35} color="#007FFF" />
+                                    {/* <Text>{i+1}</Text> */}
                                 </View>
                                 :
                                 ""
@@ -86,6 +156,7 @@ export default function Gallery({navigation,route}) {
                             selectedFile!=[] && selectedFile?.uri===item?.uri ?
                             <View key={i} style={styles.selectedItem}>
                                 <AntDesign name="checkcircle" size={35} color="#007FFF" />
+                                {/* <Text>{i+1}</Text> */}
                             </View>
                             :
                             ""
@@ -126,7 +197,7 @@ export default function Gallery({navigation,route}) {
         //     }
         // </ScrollView>
         <FlatList
-            data={files?.assets}
+            data={files}
             // renderItem={({file}) => <RenderFile file={file} />}
             renderItem={RenderFile}
             numColumns={3}
@@ -134,6 +205,7 @@ export default function Gallery({navigation,route}) {
             key={file=>file.uri}
             // style={styles.container}
             contentContainerStyle={{flexGrow: 1, alignItems:"center"}}
+            onEndReached={()=>{setLoadItemsCount(prev=>prev+21)}}
         />
     );
 }
