@@ -1,244 +1,255 @@
-import React, { useState, useEffect , useRef } from 'react';
-import { StyleSheet ,Text, View, Button, Image, TouchableOpacity , ScrollView , FlatList} from 'react-native';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  Button,
+  Image,
+  TouchableOpacity,
+  StatusBar,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Camera } from "expo-camera";
+import * as MediaLibrary from "expo-media-library";
+import * as VideoThumbnails from "expo-video-thumbnails";
+import { PinchGestureHandler } from "react-native-gesture-handler";
+import { useIsFocused } from "@react-navigation/native";
+import { Entypo } from "@expo/vector-icons";
 
-import { Video} from 'expo-av';
-import * as MediaLibrary from 'expo-media-library';
+export default function CameraComponent({ route, navigation }) {
+  useEffect(() => {
+    if (route.params?.selectedFiles) {
+      // console.log(route.params.selectedFiles)
+    }
+  }, [route.params?.selectedFiles]);
 
-import { AntDesign } from '@expo/vector-icons';
+  const [hasCameraPermission, setHasCameraPermission] = useState(null);
+  const [mediaLibraryPermission, setMediaLibraryPermission] = useState();
+  const [camera, setCamera] = useState(null);
+  const [type, setType] = useState(Camera.Constants.Type.back);
+  const [images, setImages] = useState([]);
 
-export default function Gallery({navigation,route}) {
-    const [mediaLibraryPermission,setMediaLibraryPermission]=useState(null);
+  const isFocused = useIsFocused();
 
-    const [files,setFiles]=useState(null);
+  const [galleryFirstItemThumbnailUri, setGalleryFirstItemThumbnailUri] =
+    useState();
 
-    const video = useRef(null);
+  const [zoom, setZoom] = useState(0);
+  const [zoomScale, setZoomScale] = useState(1);
 
-    const [status, setStatus] = useState({});
+  useEffect(() => {
+    (async () => {
+      const cameraStatus = await Camera.requestCameraPermissionsAsync();
+      setHasCameraPermission(cameraStatus.status === "granted");
+    })();
+  }, []);
 
-    const [selectedFiles,setSelectedFiles]=useState([]);
+  useEffect(() => {
+    (async () => {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      setMediaLibraryPermission(status);
+      if (status === "granted") {
+        const albumName = "Camera";
+        const getFiles = await MediaLibrary.getAlbumAsync(albumName);
 
-    const [loadItemsCount,setLoadItemsCount]=useState(21);
+        const firstItem = await MediaLibrary.getAssetsAsync({
+          first: 1,
+          album: getFiles,
+          sortBy: ["creationTime"],
+          mediaType: ["photo", "video"],
+        });
 
-    //ask media permission
-    useEffect(()=>{
-        (async () => {
-            const { status } = await MediaLibrary.requestPermissionsAsync();
-            if (status === "granted") {
-                setMediaLibraryPermission(status);
+        if (firstItem.assets[0].mediaType == "photo") {
+          setGalleryFirstItemThumbnailUri(firstItem.assets[0].uri);
+        } else {
+          const { uri } = await VideoThumbnails.getThumbnailAsync(
+            firstItem.assets[0].uri,
+            {
+              time: 15000,
             }
-        })();
-    },[])
-
-    useEffect(() => {
-        navigation.setOptions({
-            headerRight: () => (
-                <Button 
-                    onPress={Upload} 
-                    title={
-                        "Upload"
-                    } 
-                />
-            ),
-        });
-    }, [navigation]);
-
-    useEffect(()=>{
-        const getInitialFiles=async()=>{
-            const initialFiles=await MediaLibrary.getAssetsAsync({
-              first:loadItemsCount,
-              sortBy:["creationTime"],
-              mediaType:["photo","video"],
-            });
-    
-            setFiles(initialFiles.assets)
+          );
+          setGalleryFirstItemThumbnailUri(uri);
         }
+      }
+    })();
+  }, []);
 
-        getInitialFiles();
-    },[loadItemsCount])
-
-    // useEffect(()=>{
-    //     const getMoreFiles=async()=>{
-    //         const newFiles=await MediaLibrary.getAssetsAsync({
-    //           first:loadItemsCount,
-    //           sortBy:["creationTime"],
-    //           mediaType:["photo","video"],
-    //         //   after:files!=null?files[files.length-1].id : ""
-    //         });
-    
-    //         setFiles(photos.assets)
-    //         setFiles([...files , newFiles.assets])
-    //     }
-
-    //     getMoreFiles();
-    // },[loadItemsCount]);
-
-    const Upload=async()=>{
-        // navigation.navigate("Camera" , {
-        //     selectedFiles:selectedFiles
-        // })
-        const photo = selectedFiles[0];
-
-        const info = await MediaLibrary.getAssetInfoAsync(photo);
-
-        // console.log(info.filename);
-
-        const data = new FormData();
-        data.append("file", { uri: info.localUri, name: info.filename });
-        data.append("upload_preset", "vgnfzq1k");
-        data.append("cloud_name", "dt2qlgnd6");
-
-        fetch("https://api.cloudinary.com/v1_1/dt2qlgnd6/upload", {
-            method: "post",
-            body: data,
-        })
-        .then((res) => res.json())
-        .then((data) => {
-            console.log("data", data.secure_url);
-        })
-        .catch((err) => {
-            console.log(err);
-        });
-    }
-    
-    const selectFile=(file)=>{
-        const index=selectedFiles.findIndex(object=>{
-            return object.uri==file.uri;
-        });
-
-        if(index==-1){
-            setSelectedFiles([...selectedFiles , file]);
-        }else{
-            const filtered=selectedFiles.filter(selectedFile=>selectedFile?.uri!=file?.uri);
-            setSelectedFiles(filtered)
-        }
-    }
-
-    // console.log(files[files.length-1].id)
-
-    const RenderFile=({item})=>{
-        //prop's name can only be given as "item"
-        return(
-            item?.mediaType=="video" ?
-                <TouchableOpacity style={styles.fileContainer} onPress={()=>selectFile(item)}>
-                    <Video
-                        ref={video}
-                        style={styles.video}
-                        source={{uri:item && item.uri}}
-                        useNativeControls
-                        resizeMode="cover"
-                        // isLooping
-                        // onPlaybackStatusUpdate={status => setStatus(() => status)}
-                    />
-                    {
-                        selectedFiles?.map((selectedFile,i)=>{
-                            return(
-                                selectedFile!=[] && selectedFile?.uri===item?.uri ?
-                                <View key={i} style={styles.selectedItem}>
-                                    <AntDesign name="checkcircle" size={35} color="#007FFF" />
-                                    {/* <Text>{i+1}</Text> */}
-                                </View>
-                                :
-                                ""
-                            )
-                        })
-                    }
-                </TouchableOpacity>
-            :
-
-            <TouchableOpacity style={styles.fileContainer} onPress={()=>selectFile(item)}>
-                <Image
-                    source={{uri:item && item.uri}}
-                    style={styles.image}
-                />
-                {
-                    selectedFiles?.map((selectedFile,i)=>{
-                        return(
-                            selectedFile!=[] && selectedFile?.uri===item?.uri ?
-                            <View key={i} style={styles.selectedItem}>
-                                <AntDesign name="checkcircle" size={35} color="#007FFF" />
-                                {/* <Text>{i+1}</Text> */}
-                            </View>
-                            :
-                            ""
-                        )
-                    })
-                }
-            </TouchableOpacity>
-        )
-    }
-
-    return (
-        // <ScrollView style={styles.container}>
-        //     {
-        //         files && files.assets.map((file,i)=>{
-        //             return(
-        //                 file.mediaType=="video" ?
-        //                 <TouchableOpacity key={i} onPress={()=>selectFile(file)}>
-        //                     <Video
-        //                         ref={video}
-        //                         style={styles.video}
-        //                         source={{uri:file && file.uri}}
-        //                         useNativeControls
-        //                         resizeMode="cover"
-        //                         // isLooping
-        //                         // onPlaybackStatusUpdate={status => setStatus(() => status)}
-        //                     />
-        //                 </TouchableOpacity>
-        //                 :
-
-        //                 <TouchableOpacity key={i} onPress={()=>selectFile(file)}>
-        //                     <Image
-        //                         source={{uri:file && file.uri}}
-        //                         style={styles.image}
-        //                     />
-        //                 </TouchableOpacity>
-        //             )
-        //         })
-        //     }
-        // </ScrollView>
-        <FlatList
-            data={files}
-            // renderItem={({file}) => <RenderFile file={file} />}
-            renderItem={RenderFile}
-            numColumns={3}
-            keyExtractor={file=>file.uri}
-            key={file=>file.uri}
-            // style={styles.container}
-            contentContainerStyle={{flexGrow: 1, alignItems:"center"}}
-            onEndReached={()=>{setLoadItemsCount(prev=>prev+21)}}
-        />
+  const flipCamera = async () => {
+    setType(
+      type == Camera.Constants.Type.back
+        ? Camera.Constants.Type.front
+        : Camera.Constants.Type.back
     );
+  };
+
+  const takePicture = async () => {
+    if (camera) {
+      const data = await camera.takePictureAsync(null);
+      console.log(data);
+      setImages(data.uri);
+    }
+  };
+
+  const discardImage = async () => {
+    setImages([]);
+  };
+
+  const saveImage = async () => {
+    // const { status } = await MediaLibrary.requestPermissionsAsync();
+    // if (status === "granted") {
+    //   await MediaLibrary.saveToLibraryAsync(image);
+    //   setImages([])
+    //   console.log("Image successfully saved");
+    // }
+  };
+
+  const moveToGallery = async () => {
+    navigation.navigate("Gallery");
+  };
+
+  const changeZoom = (event) => {
+    if (event.nativeEvent.scale > 1 && zoom < 1) {
+      setZoom(zoom + 0.05);
+    }
+    if (event.nativeEvent.scale < 1 && zoom > 0) {
+      setZoom(zoom - 0.05);
+    }
+  };
+
+  if (hasCameraPermission === null) {
+    return <Text>Requesting camera permission...</Text>;
+  }
+  if (hasCameraPermission === false) {
+    return <Text>No access to camera</Text>;
+  }
+
+  return images.length != 0 ? (
+    <SafeAreaView style={styles.container}>
+      <Text>Images go here</Text>
+    </SafeAreaView>
+  ) : isFocused ? (
+    <View style={styles.container}>
+      <StatusBar hidden />
+
+      <View style={styles.blackTop}></View>
+
+      <View style={styles.cameraContainer}>
+        <PinchGestureHandler onGestureEvent={(event) => changeZoom(event)}>
+          <Camera
+            ref={(ref) => setCamera(ref)}
+            type={type}
+            ratio={"4:3"}
+            style={styles.camera}
+            zoom={zoom}
+          />
+        </PinchGestureHandler>
+        <View style={styles.zoomContainer}>
+          <View style={styles.zoomBubble}>
+            <Text style={styles.zoomText}>1X</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.blackBottom}>
+        <TouchableOpacity onPress={moveToGallery} style={styles.gallery}>
+          <Image
+            source={{ uri: galleryFirstItemThumbnailUri }}
+            style={styles.thumbnail}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={takePicture}>
+          <View style={styles.innerButton}></View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={flipCamera}
+          style={styles.flipCameraContainer}
+        >
+          <Entypo name="cycle" size={30} color="white" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  ) : (
+    ""
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex:1,
-    // flexDirection:"column",
-    // flexWrap:"wrap"
+    flex: 1,
+    position: "relative",
   },
-  image:{
-    width:"100%",
-    height:"100%",
-    resizeMode:"cover",
-    alignSelf:"stretch",
+  camera: {
+    flex: 1,
+    width: "100%",
   },
-  video:{
-    width:"100%",
-    height:"100%",
+  blackTop: {
+    backgroundColor: "black",
+    width: "100%",
+    height: 65,
   },
-  fileContainer:{
-    marginHorizontal:8,
-    marginVertical:5,
-    position:"relative",
-    width:110,
-    height:110
+  cameraContainer: {
+    width: "100%",
+    height: 525,
+    position: "relative",
+    alignItems: "center",
   },
-  selectedItem:{
-    position:"absolute",
-    width:"100%",
-    height:"100%",
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    justifyContent:"center",
-    alignItems:"center"
-  }
+  zoomContainer: {
+    position: "absolute",
+    bottom: 15,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  zoomBubble: {
+    borderRadius: 50,
+    aspectRatio: 1 / 1,
+    padding: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.2)",
+    marginHorizontal: 10,
+  },
+  zoomText: {
+    color: "white",
+    fontSize: 12,
+  },
+  blackBottom: {
+    flex: 1,
+    flexDirection: "row",
+    backgroundColor: "black",
+    alignItems: "center",
+    justifyContent: "space-evenly",
+  },
+  gallery: {
+    borderRadius: 50,
+    width: 50,
+    height: 50,
+    aspectRatio: 1 / 1,
+  },
+  thumbnail: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 50,
+    aspectRatio: 1 / 1,
+  },
+  button: {
+    width: 75,
+    height: 75,
+    backgroundColor: "#393e46",
+    borderRadius: 50,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  innerButton: {
+    width: 64,
+    height: 64,
+    backgroundColor: "white",
+    borderRadius: 50,
+  },
+  flipCameraContainer: {
+    borderRadius: 50,
+    width: 50,
+    height: 50,
+    backgroundColor: "#393e46",
+    aspectRatio: 1 / 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
 });
